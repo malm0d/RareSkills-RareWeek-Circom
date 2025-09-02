@@ -26,6 +26,7 @@ def mat_adjugate_2x2(A):
 # b) -4
 # c) -160
 # d) 500
+print("Problem 1:")
 a1 = -1 % p
 b1 = -4 % p
 c1 = -160 % p
@@ -46,6 +47,7 @@ print()
 # c) 21/12
 # Verify by checking that a + b = c (mod p)
 # [Note that the modular inverse of x is: pow(x, -1, p)]
+print("Problem 2:")
 a2 = 5 * pow(6, -1, p)
 b2 = 11 * pow(12, -1, p)
 c2 = 21 * pow(12, -1, p)
@@ -63,6 +65,7 @@ print()
 # b) 1/2
 # c) 1/3
 # Verify by checking a * b = c (mod p)
+print("Problem 3:")
 a3 = 2 * pow(3, -1, p)
 b3 = pow(2, -1, p)
 c3 = pow(3, -1, p)
@@ -86,7 +89,7 @@ print()
 # Reason is simply, an actually invertible matrix (where det != 0) could have
 # its det = 7, but if we attempt to invert first and then convert to a finite
 # field equivalent, if p = 7, then its det = 0 which makes its seem not invertible.]
-
+print("Problem 4:")
 A = np.matrix([[1, 1],
                [1, 4]])
 I = np.matrix([[1, 0],
@@ -98,6 +101,7 @@ determinant_A_ff = int(mat_det_2x2(A) % p)
 A_ff_inv = (pow(determinant_A_ff, -1, p) * adjugate_A_ff) % p
 print(A_ff)
 print(A_ff_inv)
+
 product = np.matmul(A_ff, A_ff_inv) % p
 print(product)
 assert np.array_equal(product, I)
@@ -110,7 +114,7 @@ print()
 # Verify your answer by checking that x * x = 12 (mod 71)
 # Use brute force
 # [We want to find x, such that x^2 mod p = 12]
-
+print("Problem 5:")
 field_elements_w_roots = set()
 for i in range(0, p):
     field_elements_w_roots.add(i * i % p)
@@ -128,14 +132,14 @@ def mod_sqrt(x, p):
     exponent = (p + 1) // 4
     return pow(x, exponent, p) # x ^ e % p
 
-print(first_sqrt) # 15
+print(first_sqrt)   # 15
 assert (first_sqrt, mod_sqrt(12, p))
 
 # Just like regular sqrt, there should be two solutions for each field element
 # except for 0, which only has 0 as the sqrt.
 # The second squart root is the additive inverse ( p - a )
 second_sqrt = p - first_sqrt
-print(second_sqrt) # 56
+print(second_sqrt)  # 56
 assert (second_sqrt * second_sqrt % p, 12)
 print()
 
@@ -149,12 +153,13 @@ print()
 #       p(x)q(x)
 # 
 # Also find the roots of: p(x), q(x), p(x)q(x)
+print("Problem 6:")
 GF71 = galois.GF(p)
 px = galois.Poly([52, 24, 61], GF71)
 qx = galois.Poly([40, 40, 58], GF71)
 
 px_plus_qx = px + qx
-print(px_plus_qx) # 21x^2 + 64x + 48
+print(px_plus_qx)   # 21x^2 + 64x + 48
 
 pxqx = px * qx
 print(pxqx) # 21x^4 + 58x^3 + 26x^2 + 69x + 59
@@ -166,7 +171,7 @@ qx_roots = qx.roots(True)
 print(qx_roots) # No roots
 
 pxqx_roots = pxqx.roots(True)
-print(pxqx_roots) # x = 34, 42
+print(pxqx_roots)   # x = 34, 42
 print()
 # We can also tell by the union of roots of the product polynomial,
 # that the roots of pxqx is the union of the roots of px and qx.
@@ -178,9 +183,32 @@ print()
 # Since these are two points, the polynomial will be of degree 1 and be the 
 # equation for a line (y = ax + b).
 # Verify your answer by checking that f(10) = 15 and f(23) = 29.
+print("Problem 7:")
+xs = GF71([10, 23])
+ys = GF71([15, 29])
+a = (ys[1] - ys[0]) / (xs[1] - xs[0])
+b = ys[0] - (a * xs[0])
+fx = galois.Poly([a, b], GF71)
+print(fx)   # 12x + 37
 
+assert fx(xs[0]) == ys[0]
+assert fx(xs[1]) == ys[1]
+print()
+
+# --------------------------------------------------
 
 # Problem 8
 # What is Lagrange Interpolation and what does it do?
 # Find a polynomial that crosses through the points (0, 1), (1, 2), (2, 1).
 # Use this Stackoverflow answer as a starting point: https://stackoverflow.com/a/73434775
+#
+# Lagrange interpolation guarantees, over a set of n points, a unique single lowest-degree 
+# polynomial of at most degree (n - 1) that passes through all those points.
+print("Problem 8:")
+x_vals = GF71(np.array([0, 1, 2]))
+y_vals = GF71(np.array([1, 2, 1]))
+lagrange_poly = galois.lagrange_poly(x_vals, y_vals)
+print(lagrange_poly)    # 70x^2 + 2x + 1
+
+y_res = lagrange_poly(x_vals)
+print(y_res)    # [1, 2, 1]
