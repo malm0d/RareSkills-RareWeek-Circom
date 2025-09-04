@@ -30,13 +30,13 @@ IC
 IC = 0
 WRITE 1 2
 ----------------
-| 0| 2| 1| 0| 0|
+| 0| 2| 0| 0| 0|
 ----------------
 
 IC = 1
 WRITE 2 1
 ----------------
-| 1| 2| 1| 0| 0|
+| 0| 2| 1| 0| 0|
 ----------------
 
 IC = 2
@@ -160,5 +160,8 @@ def main():
             next_state, pc = jumpz(prev_state, pc, 2)
 
         print(next_state)
+        print(pc)
+        print("----")
+        
         prev_state = next_state
 main()
