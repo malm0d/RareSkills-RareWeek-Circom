@@ -8,6 +8,7 @@ In a virtual machine, a register is similar to the physical CPU register but it 
 
 Register based VMs work like a processor with virtual registers, and each instruction (or 'opcode') directs which registers are the operands (inputs) of an instruction and which register holds the result the instruction.
 
+For example in Lua:
 ```Lua
 MOVE A B    -- Register(A) := Register(B)
 ADD A B C   -- Register(A) := Register(B) + Register(C)
