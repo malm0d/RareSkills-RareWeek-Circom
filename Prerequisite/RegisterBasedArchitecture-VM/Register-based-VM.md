@@ -24,5 +24,7 @@ Unlike stack based VMs, instructions in register based VMs can read their inputs
 
 A register based VM can have General-Purpose Registers - used to store intermediate values, variables, or temporary results; and/or Special Registers: Such as the instruction pointer (which holds the address of the next instruction to be executed) and the stack pointer (which manages the VM's stack).
 
+A consequence of using a register based architecture is that opcodes no longer always work on values on top of the stack; and opcodes require more operands compared to those of a stack based architecture.
+
 ### Resources:
 [Lua 5.0 Implementation (PDF)](https://www.lua.org/doc/jucs05.pdf)
