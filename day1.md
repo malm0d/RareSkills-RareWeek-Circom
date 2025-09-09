@@ -185,3 +185,4 @@ Linear constraints vs non-linear constraints
 Linear constraints means signals involved in linear combination (no mulitplication of variables)
 Non-linear constraints means signals that are multiplication of variables.
 
+Use `log(...)` to help debug
