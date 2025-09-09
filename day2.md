@@ -104,6 +104,8 @@ we write some constrain(s) to ensure that our advise is accurate.
 An advise is denoted by "<--", its like a signal assignment but the compiler doesnt create a constraint
 for it, unlike if we used "<==".
 
+An advise is considered "external" / "from outside".
+
 For example, say we have to take 100 / 9. We know that this would be 11 plus 1, so we approach this by
 computing an intermediate signal such as:
 ```
