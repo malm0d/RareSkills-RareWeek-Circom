@@ -31,7 +31,9 @@ INPUT: { "x": 2, "intermediate": 4, "y": some}
 ```
 In the above if we put `input` for `intermediate`, then we must be explicit with the input in the JSON.
 
-"output" is shorthand for ...
+"output" is shorthand for “this signal’s value should be exposed as part of the circuit’s public output”.
+
+Signals are runtime variables.
 
 Code a powers function `XtoN` (a template in circom)
 ```
