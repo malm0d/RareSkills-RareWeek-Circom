@@ -47,7 +47,8 @@ deterministic randomness.
 
 In mimc and poseidon, poseidon has less constraints so its preferred.
 
-In the witness, anything that's public appears first.
+In the witness, anything that's public appears first. Thats why we often see "1" and "out"/"z" as
+the first two elements in the witness.
 
 *** Ask boss to go through nullifier in Tornado cash again (got lost).
 
