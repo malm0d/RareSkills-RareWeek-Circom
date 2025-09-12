@@ -180,6 +180,20 @@ WITHOUT generating a constraint.
 - And if we run this with `13` as the input, then `out[0] = (13 >> 0) = 1`, `out[1] = (13 >> 1) = 0`,
   `out[2] = (13 >> 2) = 1`, and `out[3] = (13 >> 3) = 1`.
 Then the second line is essentially CONTRAINING that each value in out must be 0 or 1.
+```
+    var lc1=0;
+
+    var e2=1;
+    for (var i = 0; i<n; i++) {
+        ...
+        lc1 += out[i] * e2;
+        e2 = e2+e2;
+    }
+
+    lc1 === in;
+```
+This is essentially trying to compute `lc1` such that it is equal to the input, that the
+binary representation actually adds up to the input.
 
 Also in:
 ```
@@ -200,3 +214,6 @@ Also, we cannot directly constrain `inv` because division is not allowed in cons
 Thus, the template here indirectly constrains `inv` by linking it in the computation of `out`;
 because by constraining `in * out === 0`, this enforces if `in` is 0 then `out` must be 1, and 
 if `in` is not 0 then `out` must be 0. And this would only work if `inv` is given a correct value.
+
+Note that the `/` is multiplicative inverse. And `\` is divide.
+" x / y " means: x times multiplicative inverse of y.

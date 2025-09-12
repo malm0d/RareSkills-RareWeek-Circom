@@ -50,7 +50,16 @@ In mimc and poseidon, poseidon has less constraints so its preferred.
 In the witness, anything that's public appears first. Thats why we often see "1" and "out"/"z" as
 the first two elements in the witness.
 
-*** Ask boss to go through nullifier in Tornado cash again (got lost).
+
+Tornado Cash Nullifier:
+User deposit -> creates a nullifier and secret (offchain by depositor), computes hash(nullifier + secret), 
+                adds to merkletree.
+user withdraw -> secret and nullifier used in zk proof, computes nullifierhash = hash(nullifier),
+                 the nullifierhash must be made public so the network can verify that a nullfier has
+                 been used. Then, nullifierhash stored in a boolean map as true to indicate its been used. 
+                 Then, user is able to withdraw.
+Nullifiers used to prove that a certain deposit has been withdrawn.
+
 
 Use snarkjs to deploy contract:
 https://docs.circom.io/getting-started/compiling-circuits/
@@ -66,8 +75,10 @@ To compare if two arrays are the same very efficiently, more efficiently than O(
 Given [a, b, c] and [c, a, b], concat all elements from both arrays and hash then hash the whole thing to get r,
 then:
 (a - r)(b - r)(c - r) === (c - r)(a - r)(b - r)
+The hashing here is what makes the random value.
 
 Permutation argument.
+https://rareskills.io/post/permutation-argument
 
 Conditional branching without if statement to branch if x is 7, out 4 else out 107:
 (take one discard the other)
@@ -80,6 +91,16 @@ Quin selector, (aka linear scan)
 It allows us to use a signal as an index for an array of signals.
 See iterations exercises (Selector template).
 Or: https://rareskills.io/post/quin-selector
+
+If we have:
+```
+    signal input in[n];
+    signal input index;
+    signal output out;
+
+    out <== in[index] // Does not compile because this is non-quadratic
+```
+The `index` is a signal itself, but dynamic indexing creates non-quadratic constraints.
 
 The powers example, we can use a quin selector to compute the powers more efficiently
 at compile time.
