@@ -1,11 +1,15 @@
 # Circom Day 5
 
 ## Unstructured Recall
+//----------------------------------------------------------------
 
 `merkleTree.circom::DualMux`
 https://github.com/tornadocash/tornado-core/blob/master/circuits/merkleTree.circom#L18
 This is like a conditional swap.
 `s` means to reverse (swap) or not. `s` is constrained to 1 or 0.
+We need to use this because in a Merkle Tree, when hashing a leaf with its sibling,
+our leaf could be on either the left or right. So DualMux helps to solve this by
+allow `s` to specify `0` for the left, and `1` for the right.
 ```
 // if s == 0 returns [in[0], in[1]]
 // if s == 1 returns [in[1], in[0]]
@@ -30,10 +34,12 @@ out[0] <== (in[1] - in[0]) * 1 + in[0] = in[1] - in[0] + in[0] = in[1]
 out[1] <== (in[0] - in[1]) * 1 + in[1] = in[0] - in[1] + in[1] = in[0]
 ```
 
+//----------------------------------------------------------------
 
 `merkleTree.circom::HashLeftRight`
 https://github.com/tornadocash/tornado-core/blob/master/circuits/merkleTree.circom#L4
 
+//----------------------------------------------------------------
 
 `merkleTree.circom::MerkleTreeChecker`
 https://github.com/tornadocash/tornado-core/blob/master/circuits/merkleTree.circom#L30
@@ -55,27 +61,32 @@ This accesses the last hasher in the array:
 -> For levels = 3: valid indices are 0, 1, 2
 -> The final hash (root) comes from hashers[2] = hashers[levels-1]
 
+//----------------------------------------------------------------
 
 `withdraw`
 https://github.com/tornadocash/tornado-core/blob/master/circuits/withdraw.circom#L29
 First checks whether you really know the secret,
 then checks whether your hash is really in the tree
 
+//----------------------------------------------------------------
 
 In newer versions of circom, there is no more `private` keyword. Everything is defaulted
 to being private. Public inputs are declared in `main` in curly braces.
 
+//----------------------------------------------------------------
 
 `Num2Bits`
 Circom `<--` operator
 "Non-deterministic signal` or `advise signal`
 
+//----------------------------------------------------------------
 
 Mod is allowed in circom
 ```
 mod <-- num % denom;
 ```
 
+//----------------------------------------------------------------
 
 Add the necessary constraints to the Mod and sqrt examples:
 ```circom
@@ -127,6 +138,7 @@ template ModConstraints() {
 
 component main = ModConstraints();
 ```
+
 ```circom
 pragma circom 2.1.6;
 
@@ -179,6 +191,7 @@ template Example() {
 component main = Example();
 ```
 
+//----------------------------------------------------------------
 
 AliasCheck
 Alias means congruence.
@@ -186,6 +199,7 @@ Alias means congruence.
 CompConstant -> Does the binary number fit in the field.
 See "Alias bug".
 
+//----------------------------------------------------------------
 
 In the hack demo, in the first instance we changed 5 to 50, how come it still passed the constraint
 since z <-- x * y, then a * b === z? Wouldnt it still violate the constraint?
@@ -195,13 +209,14 @@ a * b === z;
 ```
 Here, there is nothing that constraints what z is, and x and y can be anything.
 Ultimately the product of a and b must still be z. Without constraining z, this means 
-someone could maliciously change what x and y, and so long as the result satisfies
+someone could maliciously change x and y, and so long as the result satisfies
 the constrain a * b == z, then x and y can be changed to anything and that would go
 undetected. This is a vulnerability.
 
 Hack demo related resource
 https://rareskills.io/post/underconstrained-circom
 
+//----------------------------------------------------------------
 
 ZKVMs
 THe constraint is everything must be equal between the new and previous state, excpet

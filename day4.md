@@ -4,7 +4,11 @@
 
 ZK Friendly hash functions are hashes that dont have bitwise operations in them.
 
+//----------------------------------------------------------------
+
 No need to worry about overflow in finite fields (because it just mods back)
+
+//----------------------------------------------------------------
 
 circomlib/mimc.circom
 The signal t6 means x^6.
@@ -50,6 +54,7 @@ In mimc and poseidon, poseidon has less constraints so its preferred.
 In the witness, anything that's public appears first. Thats why we often see "1" and "out"/"z" as
 the first two elements in the witness.
 
+//----------------------------------------------------------------
 
 Tornado Cash Nullifier:
 User deposit -> creates a nullifier and secret (offchain by depositor), computes hash(nullifier + secret), 
@@ -60,6 +65,7 @@ user withdraw -> secret and nullifier used in zk proof, computes nullifierhash =
                  Then, user is able to withdraw.
 Nullifiers used to prove that a certain deposit has been withdrawn.
 
+//----------------------------------------------------------------
 
 Use snarkjs to deploy contract:
 https://docs.circom.io/getting-started/compiling-circuits/
@@ -67,6 +73,8 @@ https://docs.circom.io/getting-started/computing-the-witness/
 https://docs.circom.io/getting-started/proving-circuits/
 
 To view a witness file, in the js directory of the circuit: `snarkjs wtns export json witness.wtns witness.json`
+
+//----------------------------------------------------------------
 
 Schwartz zippel lemma.
 Given polynomials f and g, if we pick a random x point, if f(r) != g(r), then it is with overwhelming probability
@@ -77,8 +85,12 @@ then:
 (a - r)(b - r)(c - r) === (c - r)(a - r)(b - r)
 The hashing here is what makes the random value.
 
+//----------------------------------------------------------------
+
 Permutation argument.
 https://rareskills.io/post/permutation-argument
+
+//----------------------------------------------------------------
 
 Conditional branching without if statement to branch if x is 7, out 4 else out 107:
 (take one discard the other)
@@ -86,6 +98,8 @@ eqSeven <== IsEqual()([input, 7]);
 out <== (1 - eqSeven) * 107 + (eqSeven) * 4;
 
 In OR: x + y - xy, if we know x and y are exclusive, then we can just do: x + y
+
+//----------------------------------------------------------------
 
 Quin selector, (aka linear scan)
 It allows us to use a signal as an index for an array of signals.

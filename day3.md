@@ -16,6 +16,8 @@ What are the simplest cryptographic hash functions, simpler than MD5 (search cha
 
 ## Unstructured Recall
 
+//----------------------------------------------------------------
+
 `circomlib/bitify.circom`
 
 ```
@@ -43,7 +45,9 @@ Here, `out[0]` is the LSB. Also we can get an intuition because off numbers have
 
 Num2Bits implicitly constrains the input to be less than 2^n where n is the number of bits.
 
-Write a template that encodes z = x & y into its binary representation, and conver the bits to the number.
+//----------------------------------------------------------------
+
+Write a template that encodes z = x & y into its binary representation, and convert the bits to the number.
 ```
 template Some() {
     var n = 4;
@@ -74,13 +78,17 @@ template Some() {
 
 Note that in circom, if `out[n]` is an n-bit number, then `out[0]` is usually the LSB, and `out[n-1]` is the MSB.
 
+//----------------------------------------------------------------
+
 Addition and multiplication in 32 bits:
 Max of 32 bits is: 2^(32) - 1;
 If x and y are both 32 bits, then x + y will be 33 bits because it carries over 1 bit, and the past 32 bits become 0.
 
 Overflow formula for addition: x + y % 2^32
 
-Ask boss the part about the last three bits when adding 2 3-bit numbers:
+//----------------------------------------------------------------
+
+Noticing the last three bits when adding and multiplying 2 3-bit numbers:
 Adding 2 3-bits could create a 4-bit number. To account overflow, the MSB gets discarded and the 
 least 3 significant bits get preserved.
    011 (3)
@@ -103,8 +111,11 @@ When we consider the overflow (constrain to 32 bits), we just take the least sig
 With overflow it becomes 00000000 (0), which is correct because the largest possible number for
 an 8 bit number is 255 (2^n - 1), so in an 8 bit constraint, 256 overflows to 0.
 
+//----------------------------------------------------------------
+
 `binsum` in circomlib
 
+//----------------------------------------------------------------
 ```
 var s;
 
@@ -115,13 +126,17 @@ for (var i = 0; i <n ;i ++) {
 `var s` means symbolic variable.
 `var i` in the loop is a scripting variable.
 
-Check on Symbolic variables:
+On Symbolic variables:
 Symbolic variables cannot have more than one multiplication, they are signals that are unknown at 
 compile time (placeholders) (or another way to look at it, variables that are assigned a value from a signal).
 Symbolic variables holds either a single signal or a collection of signals that are added or multiplied together.
 If a variable is never assigned a value from a signal, then it is not a symbolic variable.
 
+//----------------------------------------------------------------
+
 A good hash function follows a random distribution.
+
+//----------------------------------------------------------------
 
 Code a template that finds the inner product of two arrays:
 template InnerProduct (n) {
@@ -158,4 +173,79 @@ component main = InnerProduct(4);
 
 // expected output should be 2 + 8 + 18 + 32 = 60
 
+//----------------------------------------------------------------
+
 (optional) Code a very simple hash function, uses XOR, NOR, rotates, etc, has arrays for bitwise operations, rotation amounts etc.
+Can consider working on this:
+```
+pragma circom 2.1.6;
+
+include "circomlib/bitify.circom";
+
+template XOR(n) {
+    signal input in1[n];
+    signal input in2[n];
+    signal output out[n];
+
+    for (var i = 0 ; i<n ; i++) {
+        out[i] <== in1[i] + in2[i] - 2 * in1[i] * in2[i];
+    }
+}
+
+template XNOR(n) {
+    signal input in1[n];
+    signal input in2[n];
+    signal output out[n];
+
+    for (var i = 0 ; i<n ; i++) {
+        out[i] <== 1 - (in1[i] + in2[i] - 2 * in1[i] * in2[i]);
+    }
+}
+
+template Rot(n, r) {
+    signal input in[n];
+    signal output out[n];
+
+    for (var i = 0; i < n; i++) {
+        out[i] <== in[(i + r) % n];
+    }
+}
+
+template Crazy (n) {
+
+    var k[2] = [13, 209];
+
+    signal input in[n]; // 32-bit values
+    signal output state[n + 1][32];
+
+    var initState = 9812735;
+    component n2b = Num2Bits(32);
+    n2b.in <== initState;
+    for (var j = 0; j < 32; j++) {
+        state[0][j] <== n2b.out[j];
+    }
+
+    component XORs[n];
+    component n2bs[n];
+    for (var i = 1; i < n + 1; i++) {
+        XORs[i - 1] = XOR(32);
+        n2bs[i - 1] = Num2Bits(32);
+        n2bs[i - 1].in <== k[i - 1];
+        for (var j = 0; j < 32; j++) {
+            XORs[i - 1].in1[j] <== state [i-1][j];
+            XORs[i - 1].in2[j] <== n2bs[i - 1].out[j];
+        }
+        for (var j = 0; j < 32; j++) {
+            state[i][j] <== XORs[i - 1].out[j];
+        }
+    }
+}
+
+component main = Crazy(2);
+
+/* INPUT = {
+    "in": [3,3]
+} */
+```
+
+//----------------------------------------------------------------
