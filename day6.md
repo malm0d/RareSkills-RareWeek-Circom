@@ -28,8 +28,13 @@ SUB
 CPY
 SET
 
+//----------------------------------------
 
 Why do we need forceEnabled?
+
+Architecturally, we want to enable and constraint the correct opcodes, while also allowing
+all possible operations at every step. We need to selectively enable only one that should execute.
+It allows conditional constraints.
 
 //----------------------------------------
 
