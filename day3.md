@@ -146,14 +146,9 @@ template InnerProduct (n) {
     signal output out;
 
     signal productArr[n];
-
+    var s;
     for (var i = 0; i < n; i++) {
         productArr[i] <== in1[i] * in2[i]; 
-    }
-
-    var s;
-
-    for (var i = 0; i < n; i++) {
         s += productArr[i];
         log(s);
     }
@@ -177,6 +172,8 @@ component main = InnerProduct(4);
 
 (optional) Code a very simple hash function, uses XOR, NOR, rotates, etc, has arrays for bitwise operations, rotation amounts etc.
 Can consider working on this:
+
+CRAZY HASH
 ```
 pragma circom 2.1.6;
 

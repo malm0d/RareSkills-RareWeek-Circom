@@ -23,12 +23,12 @@ template DualMux() {
     out[1] <== (in[0] - in[1])*s + in[1];
 }
 ```
-When s = 0:
+When s = 0, `out[0]` returns `in[0]`, and `out[1]` returns `in[1]` (no swap).
 ```
 out[0] <== (in[1] - in[0]) * 0 + in[0] = 0 + in[0] = in[0]
 out[1] <== (in[0] - in[1]) * 0 + in[1] = 0 + in[1] = in[1]
 ```
-When s = 1;
+When s = 1, `out[0]` returns `in[1]`, and `out[1]` returns `in[0]` (swap).
 ```
 out[0] <== (in[1] - in[0]) * 1 + in[0] = in[1] - in[0] + in[0] = in[1]
 out[1] <== (in[0] - in[1]) * 1 + in[1] = in[0] - in[1] + in[1] = in[0]
@@ -38,6 +38,22 @@ out[1] <== (in[0] - in[1]) * 1 + in[1] = in[0] - in[1] + in[1] = in[0]
 
 `merkleTree.circom::HashLeftRight`
 https://github.com/tornadocash/tornado-core/blob/master/circuits/merkleTree.circom#L4
+This basically just computes the Mimc hash.
+The `left` represents
+```
+// Computes MiMC([left, right])
+template HashLeftRight() {
+    signal input left;
+    signal input right;
+    signal output hash;
+
+    component hasher = MiMCSponge(2, 1);
+    hasher.ins[0] <== left;
+    hasher.ins[1] <== right;
+    hasher.k <== 0;
+    hash <== hasher.outs[0];
+}
+```
 
 //----------------------------------------------------------------
 

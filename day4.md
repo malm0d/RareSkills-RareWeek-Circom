@@ -102,6 +102,7 @@ In OR: x + y - xy, if we know x and y are exclusive, then we can just do: x + y
 //----------------------------------------------------------------
 
 Quin selector, (aka linear scan)
+This is the best way to index arrays in circom.
 It allows us to use a signal as an index for an array of signals.
 See iterations exercises (Selector template).
 Or: https://rareskills.io/post/quin-selector
