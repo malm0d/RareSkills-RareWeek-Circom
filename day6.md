@@ -36,7 +36,8 @@ Architecturally, we want to enable and constraint the correct opcodes, while als
 all possible operations at every step. We need to selectively enable only one that should execute.
 It allows conditional constraints.
 
-//----------------------------------------
+//--------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 
 ZKVM
 ```
@@ -64,6 +65,9 @@ template Select(n) {
     out <== sum;
 }
 
+// Constrain that an ADD operation executed correctly.
+// Only register 0 changes to the sum, all other registers remain unchanged.
+//
 template AddOp(nReg) {
     signal input prev[nReg]; // states
     signal input curr[nReg];
@@ -73,12 +77,9 @@ template AddOp(nReg) {
 
     signal input enabled; //to compare or not
 
-    component eqs1[nReg];
-    component eqs2[nReg];
     component feqs[nReg];
 
-    // In an ADD op, only register 0 changes.
-    // This compares all registers except register 0.
+    // All registers other than reg 0 should be the same value;
     for (var i = 1; i < nReg; i++) {
         feqs[i] = ForceEqualIfEnabled();
         feqs[i].in[0] <== prev[i];
@@ -89,27 +90,32 @@ template AddOp(nReg) {
     component s1 = Select(nReg);
     component s2 = Select(nReg);
 
+    // Extract values from the prev state used for ADD op.
+    // The output should be the value in the registers.
     for (var i = 0; i < nReg; i++) {
         s1.in[i] <== prev[i];
         s2.in[i] <== prev[i];
     }
-
-    // Index from the prev state the registers used for ADD.
-    // The output should be the value of the registers.
     s1.index <== arg1;
     s2.index <== arg2;
 
-    // Constraint the addition of the values of the registers in the prev
-    // state to be equal to the value in register 0 in the current state.
+    // Constrain that reg 0 in the current state is the sum of the
+    // values from the two given registers in the previous state
     feqs[0] = ForceEqualIfEnabled();
     feqs[0].in[0] <== curr[0];
     feqs[0].in[1] <== s1.out + s2.out;
     feqs[0].enabled <== enabled;
 }
 
+// We want to constraint that the SET opcode changed its target register's value and
+// that every other register remains unchanged.
+//
 // If the index matches the register, then z[i] will be the value, and eqs[i].out
-// will be 1. Then in `prev[i] * (1 - eqs[i].out) + z[i];`, this makes the value z[i].
+// will be 1. Then in `prev[i] * (1 - eqs[i].out) + z[i];`, this makes the value `z[i]`.
+// Otherwise, if eqs[i].out is 0 (index doesnt match register), then z[i] will technically
+// be 0, and so in `prev[i] * (1 - eqs[i].out) + z[i];` will just be `prev[i]`.
 // `enabled` will not be on when we are comparing an updated register.
+//
 template SetOp(nReg) {
     signal input prev[nReg];
     signal input curr[nReg];
@@ -127,7 +133,9 @@ template SetOp(nReg) {
         eqs[i].in[0] <== i;
         eqs[i].in[1] <== reg;
 
+        // z[i] <== 0 (if not eq), val (if eq)
         z[i] <== val * eqs[i].out;
+        S
         feq[i] = ForceEqualIfEnabled();
         feq[i].in[0] <== curr[i];
         feq[i].in[1] <== prev[i] * (1 - eqs[i].out) + z[i];
@@ -145,7 +153,7 @@ template SetOp(nReg) {
 // Number of rows in the state array is nSteps + 1, because we need to account for the default
 // state. I.e. if our program has 2 steps, then 2 transitions from the default state means
 // 3 recorded states.
-
+//
 template SaturdayVM(nReg, _nSteps, nInstr) {
     var nSteps = _nSteps + 1;
     var SET = 1;
@@ -154,6 +162,8 @@ template SaturdayVM(nReg, _nSteps, nInstr) {
     signal input args1[nInstr];
     signal input args2[nInstr];
 
+    // We can use symbolic variables here because these are not what we
+    // really want to use for constraining state transitions.
     var isSet[nSteps];
     var isAdd[nSteps];
     var ops[nSteps];
@@ -201,6 +211,7 @@ template SaturdayVM(nReg, _nSteps, nInstr) {
         }
     }
 
+    // Arrays used for constraining state transitions
     signal output tisSet[nSteps];
     signal output tisAdd[nSteps];
     signal output tops[nSteps];
@@ -272,179 +283,164 @@ component main = SaturdayVM(4,3,3);
 } */
 ```
 
-//----------------------------------------
+//--------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 
-Demo WITH JUMP in VM:
+Same as above but just cleaner and clearer.
 
-pragma circom 2.0.0;
+```
+template SaturdayVM (nReg, _nSteps, nInstrs) {
+    // Account for step 0 at the initial state.
+    var nSteps = _nSteps + 1;
 
-include "../node_modules/circomlib/circuits/comparators.circom";
+    signal input instructions[nInstrs];
+    signal input arg1s[nInstrs];
+    signal input arg2s[nInstrs];
 
-template QuinSelector(n) {
-    signal input in[n];
-    signal input index;
-    signal output out;
-    
-    component isEqual[n];
-    signal products[n];
-    signal partialSums[n];
-    
-    for (var k = 0; k < n; k++) {
-        isEqual[k] = IsEqual();
-        isEqual[k].in[0] <== index;
-        isEqual[k].in[1] <== k;
-        products[k] <== in[k] * isEqual[k].out;
+    var SET = 1;
+    var ADD = 2;
+
+    // For every step (state transition), we need to know what are our args,
+    // opcodes, program counter, and the next program counter.
+    // We also need to know, for each opcode, during each step, whether they
+    // were executed or not (this is to use with `ForceEqualIfEnabled`)
+    var states[nSteps][nReg];
+    var sArg1[nSteps];
+    var sArg2[nSteps];
+    var sOpcode[nSteps];
+    var sPC[nSteps];
+    var sNPC[nSteps];
+    var sIsSet[nSteps];
+    var sIsAdd[nSteps];
+
+    // The default (initial state) should be 0 for all registers.
+    // The first step (step 0) should be 0 for other s (state) arrays because
+    // there is no state change at the initial state.
+    for (var reg = 0; reg < nReg; reg++) {
+        states[0][reg] = 0;
     }
-    
-    partialSums[0] <== products[0];
-    for (var k = 1; k < n; k++) {
-        partialSums[k] <== partialSums[k-1] + products[k];
+    sArg1[0] = 0;
+    sArg2[0] = 0;
+    sOpcode[0] = 0;
+    sPC[0] = 0;
+    sNPC[0] = 0;
+    sIsSet[0] = 0;
+    sIsAdd[0] = 0;
+
+    // Execute state changes.
+    // The PC for the current step should be the NPC from the previous step,
+    // because NPC should be the next counter after execution. This also
+    // means NPC gets updated after each execution, not PC.
+    // The PC determines which instruction (and args) to use during each step,
+    // while the NPC determine where to go next.
+    for (var step = 1; step < nSteps; step++) {
+        sPC[step] = sNPC[step - 1];
+        sOpcode[step] = instructions[sPC[step]];
+        sArg1[step] = arg1s[sPC[step]];
+        sArg2[step] = arg2s[sPC[step]];
+
+        // Only one of the following arrays will get updated each step;
+        // updates only if the corresponding opcode is executed.
+        sIsSet[step] = 0;
+        sIsAdd[step] = 0;
+
+        // Copy values from previous state to the current state.
+        // Note that the current state will hold the result of the opcode.
+        for (var reg = 0; reg < nReg; reg++) {
+            states[step][reg] = states[step - 1][reg];
+        }
+
+        // SET reg val
+        if (sOpcode[step] == SET) {
+            states[step][sArg1[step]] = sArg2[step];
+            sIsSet[step] = 1;
+            sNPC[step] = sPC[step] + 1;
+        }
+
+        // ADD reg1 reg2
+        // Note that ADD retrieves values already set in the given registers.
+        // It writes the sum of values to register 0.
+        if (sOpcode[step] == ADD) {
+            states[step][0] = states[step-1][sArg1[step]] + states[step-1][sArg2[step]];
+            sIsAdd[step] = 1;
+            sNPC[step] = sPC[step] + 1;
+        }
     }
-    
-    out <== partialSums[n-1];
+
+    // Arrays for constraining state transitions
+    signal output tStates[nSteps][nReg];
+    signal output tArg1[nSteps];
+    signal output tArg2[nSteps];
+    signal output tOpcode[nSteps];
+    signal output tPC[nSteps];
+    signal output tNPC[nSteps];
+    signal output tIsSet[nSteps];
+    signal output tIsAdd[nSteps];
+
+    // Copy states to tStates
+    for (var step = 0; step < nSteps; step++) {
+        for (var reg = 0; reg < nReg; reg++) {
+            tStates[step][reg] <-- states[step][reg];
+        }
+    }
+
+    // Copy s-arrays to t-arrays
+    for (var step = 0; step < nSteps; step++) {
+        tArg1[step] <-- sArg1[step];
+        tArg2[step] <-- sArg2[step];
+        tOpcode[step] <-- sOpcode[step];
+        tPC[step] <-- sPC[step];
+        tNPC[step] <-- sNPC[step];
+        tIsSet[step] <-- sIsSet[step];
+        tIsAdd[step] <-- sIsAdd[step];
+    }
+
+    // Constrain that the tStates has the default initial state, and that
+    // all t-arrays have 0 as the initial value
+    for (var reg = 0; reg < nReg; reg++) {
+        tStates[0][reg] === 0;
+    }
+    tArg1[0] === 0;
+    tArg2[0] === 0;
+    tOpcode[0] === 0;
+    tPC[0] === 0;
+    tNPC[0] === 0;
+    tIsSet[0] === 0;
+    tIsAdd[0] === 0;
+
+    // Constrain based on opcode
+    component setOps[nSteps];
+    component addOps[nSteps];
+
+    // Constrain the state at each step, for every register
+    for (var step = 1; step < nSteps; step++) {
+        setOps[step] = SetOp(nReg);
+        addOps[step] = AddOp(nReg);
+
+        // SET reg val
+        setOps[step].prev <== tStates[step - 1];
+        setOps[step].curr <== tStates[step];
+        setOps[step].reg <== tArg1[step];
+        setOps[step].val <== tArg2[step];
+        setOps[step].enabled <== tIsSet[step];
+
+        // ADD reg1 reg2
+        addOps[step].prev <== tStates[step - 1];
+        addOps[step].curr <== tStates[step];
+        addOps[step].reg1 <== tArg1[step];
+        addOps[step].reg2 <== tArg2[step];
+        addOps[step].enabled <== tIsAdd[step];
+    }
+
 }
 
-/*
-program = INC DEC JMP
+component main = SaturdayVM(4, 3, 3);
 
-trace   0   1   0   1
-pcs     0   1   2   0 
-ins   INC DEC JMP INC
-next    1   2   0   1 
-*/
+/* INPUT = {
+    "instructions": [1,1,2],
+    "arg1s": [2,3,2],
+    "arg2s": [10,11,3]
+} */
+```
 
-template A(nIns, nSteps) {
-    signal input program[nIns];
-    signal output trace[nSteps];
-    signal output pc[nSteps];
-    signal output ins[nSteps];
-    signal output pcNext[nSteps];
-
-    var INC = 1;
-    var DEC = 2;
-    var JMP = 3;
-
-    var traceV[nSteps]; // trace of computation (claimed)
-    var pcsV[nSteps];  // program counter at each step
-    var insV[nSteps];  // claimed instruction at step (i.e. program[pcC[step]])
-    var pcNextV[nSteps]; // pc for the next instruction 
-
-    traceV[0] = 0;
-    pcsV[0] = 0;
-    insV[0] = program[0];
-    pcsV[0] = 0;
-    insV[0] = program[0];
-    if (program[0] == INC) {
-        traceV[0] = 1;
-    }
-    if (program[0] == DEC) {
-        traceV[0] = -1;
-    }
-    if (program[0] == JMP) {
-        traceV[0] = 0;
-    }
-    if (program[0] == INC || program[0] == DEC) {
-        pcNextV[0] = 1;
-    } else {
-        pcNextV[0] = traceV[0];
-    }
-    for (var s = 1; s < nSteps; s++) {
-        pcsV[s] = pcNextV[s - 1];
-        insV[s] = program[pcsV[s]];
-
-        if (insV[s] == INC) {
-            traceV[s] = traceV[s - 1] + 1;
-            pcNextV[s] = pcsV[s] + 1;
-        }
-        if (insV[s] == DEC) {
-            traceV[s] = traceV[s - 1] - 1;
-            pcNextV[s] = pcsV[s] + 1;
-        }
-        if (insV[s] == JMP) {
-            traceV[s] = traceV[s - 1];
-            pcNextV[s] = traceV[s];
-        }
-
-    }
-
-    for (var s = 0; s < nSteps; s++) {
-        trace[s] <-- traceV[s];
-        pc[s] <-- pcsV[s];
-        ins[s] <-- insV[s];
-        pcNext[s] <-- pcNextV[s];
-    }
-
-    // constrain that pc starts at 0
-    pc[0] === 0;
-
-    // constrain that
-    // if
-    //   instruction[0] = INC -> trace[0] = 1 AND pcNext[s] == 1
-    //   instruction[0] = DEC -> trace[0] = -1 AND pcNext[s] == 1
-    //   instruction[0] = JMP -> trace[0] = 0 AND pcNext[s] == 0
-
-    // constrain that at each step 1 and later, pcNext[s - 1] === pc[s]
-
-    // constrain that at each step program[pc] === instruction
-
-    // constrain that at each step
-    // if
-    //   instruction[s] = INC -> trace[s] = trace[s - 1] + 1 AND pcNext[s] == pc[s] + 1
-    //   instruction[s] = DEC -> trace[s] = trace[s - 1] - 1 AND pcNext[s] == pc[s] + 1
-    //   instruction[s] = JMP -> trace[s] = trace[s - 1] AND pcNext[s] == trace[s]
-    
-    // create boolean conditions for each instruction type at each step
-    component isINC[nSteps];
-    component isDEC[nSteps];
-    component isJMP[nSteps];
-    
-    // create quin selectors for program lookup
-    component programSelector[nSteps];
-    
-    // intermediate signals for quadratic constraints
-    signal incDecNext[nSteps];
-    signal jmpNext[nSteps];
-    
-    for (var s = 0; s < nSteps; s++) {
-        // use quin selector to get program[pc[s]]
-        programSelector[s] = QuinSelector(nIns);
-        programSelector[s].in <== program;
-        programSelector[s].index <== pc[s];
-        
-        // constrain that instruction at step s matches program[pc[s]]
-        ins[s] === programSelector[s].out;
-        
-        // create boolean conditions
-        isINC[s] = IsEqual();
-        isINC[s].in[0] <== ins[s];
-        isINC[s].in[1] <== INC;
-        
-        isDEC[s] = IsEqual();
-        isDEC[s].in[0] <== ins[s];
-        isDEC[s].in[1] <== DEC;
-        
-        isJMP[s] = IsEqual();
-        isJMP[s].in[0] <== ins[s];
-        isJMP[s].in[1] <== JMP;
-        
-        // constrain trace based on instruction type
-        if (s == 0) {
-            // initial trace: 0 + 1*isINC - 1*isDEC + 0*isJMP
-            trace[s] === isINC[s].out - isDEC[s].out;
-        } else {
-            // trace[s] = trace[s-1] + 1*isINC - 1*isDEC + 0*isJMP
-            trace[s] === trace[s - 1] + isINC[s].out - isDEC[s].out;
-            
-            // constrain that pcNext[s-1] === pc[s]
-            pcNext[s - 1] === pc[s];
-        }
-        
-        // constrain pcNext based on instruction type using intermediate signals
-        // if INC or DEC: pcNext = pc + 1, if JMP: pcNext = trace
-        incDecNext[s] <-- (isINC[s].out + isDEC[s].out) * (pc[s] + 1);
-        jmpNext[s] <-- isJMP[s].out * trace[s];
-        pcNext[s] === incDecNext[s] + jmpNext[s];
-    }
-}
-
-component main = A(3, 8);
+//--------------------------------------------------------------------------------
